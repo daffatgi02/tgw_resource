@@ -168,6 +168,228 @@ CREATE TABLE IF NOT EXISTS `tgw_chat_limits` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
+-- ADDITIONAL TABLES FOR TGW RESOURCES
+-- =====================================================
+
+-- Player Preferences (Generic preference system)
+CREATE TABLE IF NOT EXISTS `tgw_player_preferences` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `identifier` VARCHAR(60) NOT NULL,
+  `category` VARCHAR(32) NOT NULL, -- 'ui', 'gameplay', 'chat', etc.
+  `preference_key` VARCHAR(64) NOT NULL,
+  `preference_value` TEXT NOT NULL, -- JSON formatted data
+  `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_preference` (`identifier`, `category`, `preference_key`),
+  INDEX `idx_identifier` (`identifier`),
+  INDEX `idx_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Rating System (Enhanced rating tracking)
+CREATE TABLE IF NOT EXISTS `tgw_rating` (
+  `identifier` VARCHAR(60) NOT NULL,
+  `rating` INT(11) NOT NULL DEFAULT 1500,
+  `peak_rating` INT(11) NOT NULL DEFAULT 1500,
+  `provisional` TINYINT(1) NOT NULL DEFAULT 1,
+  `season_rating` INT(11) NOT NULL DEFAULT 1500,
+  `games_played` INT(11) NOT NULL DEFAULT 0,
+  `last_updated` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`identifier`),
+  INDEX `idx_rating` (`rating`),
+  INDEX `idx_peak_rating` (`peak_rating`),
+  INDEX `idx_provisional` (`provisional`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Rating History (Detailed rating changes)
+CREATE TABLE IF NOT EXISTS `tgw_rating_history` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `identifier` VARCHAR(60) NOT NULL,
+  `old_rating` INT(11) NOT NULL,
+  `new_rating` INT(11) NOT NULL,
+  `rating_change` INT(11) NOT NULL,
+  `reason` VARCHAR(64) NOT NULL, -- 'match_win', 'match_loss', 'season_reset', etc.
+  `match_context` TEXT DEFAULT NULL, -- JSON with match details
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_identifier` (`identifier`),
+  INDEX `idx_created_at` (`created_at`),
+  INDEX `idx_reason` (`reason`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Seasons System
+CREATE TABLE IF NOT EXISTS `tgw_seasons` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `season_number` INT(11) NOT NULL,
+  `start_date` DATETIME NOT NULL,
+  `end_date` DATETIME NOT NULL,
+  `active` TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_season` (`season_number`),
+  INDEX `idx_active` (`active`),
+  INDEX `idx_dates` (`start_date`, `end_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ladder System
+CREATE TABLE IF NOT EXISTS `tgw_ladder` (
+  `identifier` VARCHAR(60) NOT NULL,
+  `level` INT(11) NOT NULL DEFAULT 1,
+  `xp` INT(11) NOT NULL DEFAULT 0,
+  `total_xp` INT(11) NOT NULL DEFAULT 0,
+  `last_updated` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`identifier`),
+  INDEX `idx_level` (`level`),
+  INDEX `idx_xp` (`xp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Achievements System
+CREATE TABLE IF NOT EXISTS `tgw_achievements` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `identifier` VARCHAR(60) NOT NULL,
+  `achievement_id` VARCHAR(64) NOT NULL,
+  `earned_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_achievement` (`identifier`, `achievement_id`),
+  INDEX `idx_identifier` (`identifier`),
+  INDEX `idx_achievement_id` (`achievement_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Loadout Preferences
+CREATE TABLE IF NOT EXISTS `tgw_loadout_preferences` (
+  `identifier` VARCHAR(60) NOT NULL,
+  `round_type` ENUM('rifle', 'pistol', 'sniper') NOT NULL,
+  `weapon_hash` VARCHAR(32) NOT NULL,
+  `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`identifier`, `round_type`),
+  INDEX `idx_round_type` (`round_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Integrity System
+CREATE TABLE IF NOT EXISTS `tgw_integrity` (
+  `identifier` VARCHAR(60) NOT NULL,
+  `trust_score` INT(11) NOT NULL DEFAULT 100,
+  `last_check` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`identifier`),
+  INDEX `idx_trust_score` (`trust_score`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Integrity Violations
+CREATE TABLE IF NOT EXISTS `tgw_integrity_violations` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `identifier` VARCHAR(60) NOT NULL,
+  `violation_type` VARCHAR(32) NOT NULL,
+  `severity` ENUM('low', 'medium', 'high', 'critical') NOT NULL,
+  `evidence` TEXT DEFAULT NULL,
+  `source` VARCHAR(32) NOT NULL, -- which system detected it
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_identifier` (`identifier`),
+  INDEX `idx_violation_type` (`violation_type`),
+  INDEX `idx_severity` (`severity`),
+  INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Integrity Restrictions
+CREATE TABLE IF NOT EXISTS `tgw_integrity_restrictions` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `identifier` VARCHAR(60) NOT NULL,
+  `restriction_type` VARCHAR(32) NOT NULL,
+  `reason` VARCHAR(255) NOT NULL,
+  `end_time` DATETIME DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_identifier` (`identifier`),
+  INDEX `idx_restriction_type` (`restriction_type`),
+  INDEX `idx_end_time` (`end_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Integrity Bans
+CREATE TABLE IF NOT EXISTS `tgw_integrity_bans` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `identifier` VARCHAR(60) NOT NULL,
+  `ban_type` VARCHAR(32) NOT NULL,
+  `reason` VARCHAR(255) NOT NULL,
+  `end_time` DATETIME DEFAULT NULL, -- NULL for permanent bans
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_identifier` (`identifier`),
+  INDEX `idx_ban_type` (`ban_type`),
+  INDEX `idx_end_time` (`end_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Integrity Reports
+CREATE TABLE IF NOT EXISTS `tgw_integrity_reports` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `reporter_identifier` VARCHAR(60) NOT NULL,
+  `target_identifier` VARCHAR(60) NOT NULL,
+  `reason` VARCHAR(255) NOT NULL,
+  `evidence` TEXT DEFAULT NULL,
+  `status` ENUM('pending', 'reviewed', 'resolved') NOT NULL DEFAULT 'pending',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_reporter` (`reporter_identifier`),
+  INDEX `idx_target` (`target_identifier`),
+  INDEX `idx_status` (`status`),
+  INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Integrity Whitelist
+CREATE TABLE IF NOT EXISTS `tgw_integrity_whitelist` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `identifier` VARCHAR(60) NOT NULL,
+  `reason` VARCHAR(255) NOT NULL,
+  `admin_id` VARCHAR(60) NOT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_whitelist` (`identifier`),
+  INDEX `idx_admin_id` (`admin_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Chat Messages Archive
+CREATE TABLE IF NOT EXISTS `tgw_chat_messages` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `sender_identifier` VARCHAR(60) NOT NULL,
+  `arena_id` INT(11) DEFAULT NULL,
+  `channel` VARCHAR(32) NOT NULL DEFAULT 'arena',
+  `message` TEXT NOT NULL,
+  `filtered_message` TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_sender` (`sender_identifier`),
+  INDEX `idx_arena_id` (`arena_id`),
+  INDEX `idx_channel` (`channel`),
+  INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Chat Mutes
+CREATE TABLE IF NOT EXISTS `tgw_chat_mutes` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `identifier` VARCHAR(60) NOT NULL,
+  `reason` VARCHAR(255) NOT NULL,
+  `duration` INT(11) NOT NULL, -- duration in seconds
+  `mute_end` DATETIME NOT NULL,
+  `admin_identifier` VARCHAR(60) NOT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_identifier` (`identifier`),
+  INDEX `idx_mute_end` (`mute_end`),
+  INDEX `idx_admin` (`admin_identifier`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Chat Violations
+CREATE TABLE IF NOT EXISTS `tgw_chat_violations` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `identifier` VARCHAR(60) NOT NULL,
+  `violation_type` VARCHAR(32) NOT NULL,
+  `message` TEXT NOT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `idx_identifier` (`identifier`),
+  INDEX `idx_violation_type` (`violation_type`),
+  INDEX `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
 -- Initial Data Seeding
 -- =====================================================
 
