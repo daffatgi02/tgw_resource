@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/fivem-server-root/txData/FiveMBasicServerCFXDefault_D1353C.base/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
